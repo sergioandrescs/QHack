@@ -31,15 +31,18 @@ def variational_ansatz(params, wires):
         # Alternating layers of unitary rotations on every qubit followed by a
         # ring cascade of CNOTs.
         for layer_idx in range(n_layers):
-            layer_params = params[layer_idx * n_qubits : layer_idx * n_qubits + n_qubits, :]
-            qml.broadcast(qml.Rot, wires, pattern="single", parameters=layer_params)
+            layer_params = params[layer_idx *
+                                  n_qubits: layer_idx * n_qubits + n_qubits, :]
+            qml.broadcast(qml.Rot, wires, pattern="single",
+                          parameters=layer_params)
             qml.broadcast(qml.CNOT, wires, pattern="ring")
 
         # There may be "extra" parameter sets required for which it's not necessarily
         # to perform another full alternating cycle. Apply these to the qubits as needed.
         extra_params = params[-n_extra_rots:, :]
-        extra_wires = wires[: n_qubits - 1 - n_extra_rots : -1]
-        qml.broadcast(qml.Rot, extra_wires, pattern="single", parameters=extra_params)
+        extra_wires = wires[: n_qubits - 1 - n_extra_rots: -1]
+        qml.broadcast(qml.Rot, extra_wires, pattern="single",
+                      parameters=extra_params)
     else:
         # For 1-qubit case, just a single rotation to the qubit
         qml.Rot(*params[0], wires=wires[0])
@@ -60,7 +63,8 @@ def run_vqe(H):
     # Initialize parameters
     num_qubits = len(H.wires)
     num_param_sets = (2 ** num_qubits) - 1
-    params = np.random.uniform(low=-np.pi / 2, high=np.pi / 2, size=(num_param_sets, 3))
+    params = np.random.uniform(
+        low=-np.pi / 2, high=np.pi / 2, size=(num_param_sets, 3))
 
     energy = 0
 
@@ -69,6 +73,33 @@ def run_vqe(H):
     # Create a quantum device, set up a cost funtion and optimizer, and run the VQE.
     # (We recommend ~500 iterations to ensure convergence for this problem,
     # or you can design your own convergence criteria)
+
+    # Device Creation
+    dev = qml.device('default.qubit', wires=H.wires)
+
+    # Cost Function. Using ExpvalCost useful to use with hamiltonians
+    cost_fn = qml.ExpvalCost(variational_ansatz, H, dev)
+
+    # Optimizer
+    opt = qml.GradientDescentOptimizer(stepsize=0.1)
+
+    # Optimization loop
+
+    max_iterations = 800
+    conv_tol = 1e-05
+
+    for n in range(max_iterations):
+        params, prev_energy = opt.step_and_cost(cost_fn, params)
+        energy = cost_fn(params)
+        conv = np.abs(energy - prev_energy)
+
+        # if n % 20 == 0:
+        #     print('Iteration = {:},  Energy = {:.8f} Ha'.format(n, energy))
+
+        if conv <= conv_tol:
+            break
+
+    #
 
     # QHACK #
 
