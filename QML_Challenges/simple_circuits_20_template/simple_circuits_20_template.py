@@ -22,11 +22,16 @@ def simple_circuits_20(angle):
     # QHACK #
 
     # Step 1 : initalize a device
+    dev = qml.device("default.qubit", wires=1)
 
     # Step 2 : Create a quantum circuit and qnode
+    @qml.qnode(dev)
+    def simple_func(angle):
+        qml.RX(angle, wires=0)
+        return qml.probs(wires=0)
 
     # Step 3 : Run the qnode
-    # prob = ?
+    prob = simple_func(angle)[0]
 
     # QHACK #
     return prob
@@ -45,6 +50,7 @@ if __name__ == "__main__":
         ans = ans.item()
 
     if not isinstance(ans, float):
-        raise TypeError("the simple_circuits_20 function needs to return a float")
+        raise TypeError(
+            "the simple_circuits_20 function needs to return a float")
 
     print(ans)

@@ -38,7 +38,20 @@ def parameter_shift(weights):
     gradient = np.zeros_like(weights)
 
     # QHACK #
-    #
+    import math
+
+    def parameter_shift_term(qnode, params, shift_value, row, col):
+        shifted = params.copy()
+        shifted[row][col] += shift_value
+        forward = qnode(shifted)  # forward evaluation
+
+        shifted[row][col] -= shift_value*2
+        backward = qnode(shifted)  # backward evaluation
+
+        return (forward - backward)/(2*math.sin(shift_value))
+    for i in range(len(weights)):
+        for j in range(len(weights[0])):
+            gradient[i][j] = parameter_shift_term(circuit, weights, 0.2, i, j)
     # QHACK #
 
     return gradient
@@ -47,7 +60,8 @@ def parameter_shift(weights):
 if __name__ == "__main__":
     # DO NOT MODIFY anything in this code block
     weights = sys.stdin.read()
-    weights = np.array([row.split(",") for row in weights.split("S") if row], dtype=np.float64)
+    weights = np.array([row.split(",")
+                        for row in weights.split("S") if row], dtype=np.float64)
 
     gradient = np.round(parameter_shift(weights), 10)
 
