@@ -30,17 +30,25 @@ def optimize_circuit(params):
     # QHACK #
 
     # Initialize the device
-    # dev = ...
+    dev = qml.device("default.qubit", WIRES)
 
     # Instantiate the QNode
-    # circuit = qml.QNode(variational_circuit, dev)
+    circuit = qml.QNode(variational_circuit, dev)
 
     # Minimize the circuit
+    opt = qml.GradientDescentOptimizer(stepsize=0.4)
+
+    # set the number of steps
+    steps = 150
+
+    for i in range(steps):
+        # update the circuit parameters
+        params = opt.step(circuit, params)
 
     # QHACK #
 
     # Return the value of the minimized QNode
-    return optimal_value
+    return circuit(params)
 
 
 def variational_circuit(params):
@@ -68,7 +76,8 @@ if __name__ == "__main__":
     # Load and process Hamiltonian data
     hamiltonian = sys.stdin.read()
     hamiltonian = hamiltonian.split(",")
-    hamiltonian = np.array(hamiltonian, float).reshape((2 ** WIRES, 2 ** WIRES))
+    hamiltonian = np.array(hamiltonian, float).reshape(
+        (2 ** WIRES, 2 ** WIRES))
 
     # Generate random initial parameters
     np.random.seed(1967)
