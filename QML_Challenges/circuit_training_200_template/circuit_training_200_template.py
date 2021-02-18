@@ -33,7 +33,7 @@ def find_max_independent_set(graph, params):
     # QHACK #
     from pennylane import qaoa
 
-    cost_h, mixer_h = qaoa.max_independent_set(graph, constrained=False)
+    cost_h, mixer_h = qaoa.max_independent_set(graph, constrained=True)
 
     # A single layer of QAOA
     def qaoa_layer(gamma, alpha):
@@ -41,26 +41,22 @@ def find_max_independent_set(graph, params):
         qaoa.mixer_layer(alpha, mixer_h)
 
     # Now, create the layered circuit
-    depth = 10
-    wires = 6
-
     def circuit(params, **kwargs):
-        qml.layer(qaoa_layer, depth, params[0], params[1])
+        qml.layer(qaoa_layer, N_LAYERS, params[0], params[1])
 
     # Device and eval of cost function
-    dev = qml.device("default.qubit", wires=wires)
+    dev = qml.device("default.qubit", wires=NODES)
 
     @qml.qnode(dev)
     def probability_circuit(gamma, alpha):
         circuit([gamma, alpha])
-        return qml.probs(wires=[i for i in range(wires)])
+        return qml.probs(wires=[i for i in range(NODES)])
 
     probs = probability_circuit(params[0], params[1])
-    print(probs)
 
+    # Get the nodes with the highest prob
     max_index = np.argmax(probs)
-
-    bin_max = "{0:b}".format(max_index)
+    bin_max = "{0:06b}".format(max_index)
 
     for count, val in enumerate(bin_max):
         if val == '1':
