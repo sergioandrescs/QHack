@@ -67,13 +67,15 @@ def parse_input(giant_string):
     X_train_part, Y_train_part, X_test_part = giant_string.split("XXX")
 
     X_train_row_strings = X_train_part.split("S")
-    X_train_rows = [[float(x) for x in row.split(",")] for row in X_train_row_strings]
+    X_train_rows = [[float(x) for x in row.split(",")]
+                    for row in X_train_row_strings]
     X_train = np.array(X_train_rows)
 
     Y_train = concatenated_string_to_array(Y_train_part)
 
     X_test_row_strings = X_test_part.split("S")
-    X_test_rows = [[float(x) for x in row.split(",")] for row in X_test_row_strings]
+    X_test_rows = [[float(x) for x in row.split(",")]
+                   for row in X_test_row_strings]
     X_test = np.array(X_test_rows)
 
     return X_train, Y_train, X_test

@@ -32,6 +32,100 @@ def natural_gradient(params):
     natural_grad = np.zeros(6)
 
     # QHACK #
+    import math
+
+    # Create qnode for quantum state
+
+    gradient = np.zeros([len(params)], dtype=np.float64)
+    behaviour_matrix = np.zeros([len(params), len(params)], dtype=np.float64)
+
+    # Obtain gradient
+    def parameter_shift_term(qnode, params, shift_value, index):
+        shifted = params.copy()
+        shifted[index] += shift_value
+        forward = qnode(shifted)  # forward evaluation
+
+        shifted[index] -= shift_value*2
+        backward = qnode(shifted)  # backward evaluation
+
+        return (forward - backward)/(2*math.sin(shift_value))
+
+    for i in range(len(params)):
+        gradient[i] = parameter_shift_term(qnode, params, math.pi/2, i)
+
+    # print(gradient)
+
+    # Metric tensor
+
+    # First of all, reset state
+    dev.reset()
+
+    @qml.qnode(dev)
+    def circuit(params):
+        variational_circuit(params)
+        return qml.expval(qml.Identity(0))
+
+    # Execution with original params
+    circuit(params)
+    original_params_state = np.conj(dev.state)
+    dev.reset()
+
+    def shifter(params, shift_value, row, col, signs):
+        r""" This function executes the shift needed for the Hessian calculation.
+
+        Args:
+            row (int): First index of the shift
+            col (int): Second index of the shift
+            signs (tuple): Tuple with signs (+1,-1) os the shift to be made
+
+        Returns: 
+            array: Shifted params 
+        """
+        shifted = params.copy()
+        shifted[row] += shift_value*signs[0]
+        shifted[col] += shift_value*signs[1]
+
+        return shifted
+
+    def magnitude_calculator(bra, ket):
+        return pow(np.abs(np.inner(bra, ket)), 2)
+
+    def parameter_behave_terms(qnode, params, shift_value, row, col):
+        # Reference for future review: https://arxiv.org/pdf/2008.06517.pdf
+        dev.reset()
+        qnode(shifter(params, shift_value, row, col, [1, 1]))
+        step_1 = magnitude_calculator(original_params_state, dev.state)
+
+        dev.reset()
+        qnode(shifter(params, shift_value, row, col, [1, -1]))
+        step_2 = magnitude_calculator(original_params_state, dev.state)
+
+        dev.reset()
+        qnode(shifter(params, shift_value, row, col, [-1, 1]))
+        step_3 = magnitude_calculator(original_params_state, dev.state)
+
+        dev.reset()
+        qnode(shifter(params, shift_value, row, col, [-1, -1]))
+        step_4 = magnitude_calculator(original_params_state, dev.state)
+
+        return (-step_1 + step_2 + step_3 - step_4)/8
+
+    for i in range(len(params)):
+        for j in range(i, len(params)):
+            behaviour_matrix[i][j] = parameter_behave_terms(
+                circuit, params, math.pi/2, i, j)
+            behaviour_matrix[j][i] = behaviour_matrix[i][j]
+
+    # print(behaviour_matrix)
+
+    # qml.metric_tenser return a block diagonal matrix.
+    # Can be used for comparison, but it is not to be used for this task
+    #print(np.round(qml.metric_tensor(qnode)(params), 8))
+
+    inv_behaviour_matrix = np.linalg.inv(behaviour_matrix)
+    # print(inv_behaviour_matrix)
+
+    natural_grad = inv_behaviour_matrix.dot(gradient)
 
     # QHACK #
 
