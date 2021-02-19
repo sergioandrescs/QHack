@@ -63,11 +63,10 @@ def natural_gradient(params):
     @qml.qnode(dev)
     def circuit(params):
         variational_circuit(params)
-        return qml.expval(qml.Identity(0))
+        return qml.state()
 
     # Execution with original params
-    circuit(params)
-    original_params_state = np.conj(dev.state)
+    original_params_state = np.conj(circuit(params))
     dev.reset()
 
     def shifter(params, shift_value, row, col, signs):
